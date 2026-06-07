@@ -515,7 +515,9 @@ function findSendButton(input) {
 }
 
 function sendChat(text) {
-  const input = document.querySelector('#lobby_chat_input, input[placeholder*="message" i], textarea[placeholder*="message" i]');
+  // Puede haber varios inputs de chat (lobby oculto + juego). Elegimos el VISIBLE.
+  const inputs = [...document.querySelectorAll('#lobby_chat_input, input[placeholder*="message" i], textarea[placeholder*="message" i]')];
+  const input = inputs.find(el => el.offsetParent !== null) || inputs[0];
   if (!input) return false;
 
   // Setear el valor de forma que React lo registre
@@ -543,8 +545,10 @@ function sendChat(text) {
 
 // Diagnóstico: vuelca el HTML del área del chat para depurar el envío
 window.catanChatDump = () => {
-  const input = document.querySelector('input[placeholder*="message" i], textarea[placeholder*="message" i]');
+  const inputs = [...document.querySelectorAll('#lobby_chat_input, input[placeholder*="message" i], textarea[placeholder*="message" i]')];
+  const input = inputs.find(el => el.offsetParent !== null) || inputs[0];
   if (!input) { console.log('Input de chat NO encontrado'); return; }
+  console.log('Inputs de chat encontrados:', inputs.length, '| usando el visible:', input.offsetParent !== null);
   let box = input.parentElement;
   for (let i = 0; i < 3 && box.parentElement; i++) box = box.parentElement;
   console.log('HTML del área de chat:\n', box.outerHTML);
