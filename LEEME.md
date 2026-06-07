@@ -21,8 +21,8 @@ Hecha por **Nikito** 😎
 
 ## 📥 Cómo instalarla en Google Chrome
 
-1. **Descargá** el código: en esta página de GitHub, hacé clic en el botón verde **`Code`** → **`Download ZIP`**.
-2. **Descomprimí** el ZIP en una carpeta de tu PC (te queda una carpeta `catan-tracker`).
+1. **Descargá** la última versión desde la [**página de Releases**](https://github.com/NicolasGardella/catan-tracker/releases/latest) (el archivo `catan-tracker.zip`).
+2. **Descomprimí** el ZIP en una carpeta de tu PC.
 3. Abrí Chrome y escribí en la barra de direcciones **`chrome://extensions`**.
 4. Arriba a la derecha, activá el **Modo de desarrollador**.
 5. Hacé clic en **`Cargar extensión sin empaquetar`**.

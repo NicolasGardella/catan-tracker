@@ -21,8 +21,8 @@ Developed by **Nikito**.
 
 ## 📥 Install on Google Chrome
 
-1. **Download** the code: on this GitHub page, click the green **`Code`** button → **`Download ZIP`**.
-2. **Unzip** it into a folder on your PC (you'll get a `catan-tracker` folder).
+1. **Download** the latest version from the [**Releases page**](https://github.com/NicolasGardella/catan-tracker/releases/latest) (the `catan-tracker.zip` file).
+2. **Unzip** it into a folder on your PC.
 3. Open Chrome and go to **`chrome://extensions`** in the address bar.
 4. Top right, turn on **Developer mode** (toggle).
 5. Click **`Load unpacked`**.
