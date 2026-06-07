@@ -1,62 +1,64 @@
-# 🎲 Catan Tracker para Colonist.io
+# 🎲 Catan Tracker for Colonist.io
 
-Extensión de Chrome/Brave que lleva la cuenta automática de las cartas de cada jugador en [colonist.io](https://colonist.io), leyendo el log de la partida en tiempo real.
+A Chrome/Brave extension that automatically keeps count of each player's cards on [colonist.io](https://colonist.io), reading the in-game log in real time.
 
-Desarrollada por **Nikito**.
+Developed by **Nikito**.
 
-## ✨ Funciones
+> 🇪🇸 ¿Preferís español? Mirá el [**LEEME.md**](LEEME.md).
 
-- **Conteo de recursos** por jugador (madera, ladrillo, lana, trigo, piedra)
-- **Auto-reconciliación** con el total real de cartas que muestra el juego
-- **Robos del ladrón**: visibles y ocultos (columnas ❓ y 🥷)
-- **Comercios** entre jugadores y con el banco/puerto
-- **Construcciones**: caminos, casas y ciudades (con costos)
-- **Cartas de desarrollo**: compradas, en mano y usadas (Caballero, Monopolio, etc.)
-- **Tooltips** en cada jugador con su detalle de construcciones y desarrollo
-- **Colores** y orden iguales al panel del juego
-- Botón 🔄 para releer todo el historial
-- Mensaje automático en el chat al iniciar la partida
+## ✨ Features
 
-## 📥 Instalación en Google Chrome
+- **Resource counting** per player (lumber, brick, wool, grain, ore)
+- **Auto-reconciliation** with the real card total shown by the game
+- **Robber steals**: visible and hidden (columns ❓ and 🥷)
+- **Trades** between players and with the bank/port
+- **Buildings**: roads, settlements and cities (with costs)
+- **Development cards**: bought, in hand and used (Knight, Monopoly, etc.)
+- **Tooltips** on each player with their building and development details
+- **Colors** and order matching the game's panel
+- 🔄 button to re-read the whole history
+- Automatic chat message when the game starts
 
-1. **Descargá** el código: en esta página de GitHub, hacé clic en el botón verde **`Code`** → **`Download ZIP`**.
-2. **Descomprimí** el ZIP en una carpeta de tu PC (vas a tener una carpeta `catan-tracker`).
-3. Abrí Chrome y andá a la barra de direcciones, escribí **`chrome://extensions`** y presioná Enter.
-4. Arriba a la derecha, activá el **Modo de desarrollador** (interruptor).
-5. Hacé clic en **`Cargar extensión sin empaquetar`** (o "Load unpacked").
-6. Seleccioná la carpeta **`catan-tracker`** que descomprimiste y aceptá.
-7. ¡Listo! Entrá a [colonist.io](https://colonist.io) y jugá: el panel del tracker aparece arriba a la izquierda.
+## 📥 Install on Google Chrome
 
-> **Brave/Edge:** es igual, pero la dirección es `brave://extensions` o `edge://extensions`.
+1. **Download** the code: on this GitHub page, click the green **`Code`** button → **`Download ZIP`**.
+2. **Unzip** it into a folder on your PC (you'll get a `catan-tracker` folder).
+3. Open Chrome and go to **`chrome://extensions`** in the address bar.
+4. Top right, turn on **Developer mode** (toggle).
+5. Click **`Load unpacked`**.
+6. Select the **`catan-tracker`** folder you unzipped.
+7. Done! Go to [colonist.io](https://colonist.io) and play: the tracker panel appears at the top left.
 
-> **Nota:** mantené la carpeta descomprimida en tu PC. Si la borrás o la movés, la extensión deja de funcionar. Para actualizarla, reemplazá los archivos y tocá el botón de recargar 🔄 en `chrome://extensions`.
+> **Brave/Edge:** same steps, but the address is `brave://extensions` or `edge://extensions`.
 
-## 🧩 Columnas del panel
+> **Note:** keep the unzipped folder on your PC. If you delete or move it, the extension stops working. To update it, replace the files and click the reload 🔄 button on `chrome://extensions`.
 
-| Columna | Significado |
+## 🧩 Panel columns
+
+| Column | Meaning |
 |---|---|
-| 🌲 🧱 🐑 🌾 ⛏️ | Recursos conocidos |
-| ❓ | Cartas que robó (tipo desconocido) |
-| 🥷 | Cartas que le robaron (tipo desconocido) |
-| Σ | Total de cartas (coincide con el juego) |
+| 🌲 🧱 🐑 🌾 ⛏️ | Known resources |
+| ❓ | Cards it stole (unknown type) |
+| 🥷 | Cards stolen from it (unknown type) |
+| Σ | Total cards (matches the game) |
 
-## 🛠️ Comandos de consola
+## 🛠️ Console commands
 
-Abrí la consola del navegador con **`F12`** (pestaña **Console**) y escribí cualquiera de estos comandos mientras estás en una partida:
+Open the browser console with **`F12`** (the **Console** tab) and type any of these while in a game:
 
-| Comando | Qué hace |
+| Command | What it does |
 |---|---|
-| `catanReload()` | Relee **todo el historial** de la partida y recalcula desde cero (igual que el botón 🔄 del panel). |
-| `catanReconcile()` | Fuerza la **reconciliación** de los totales con las cartas que muestra el juego. |
-| `catanReset()` | **Reinicia** el conteo a cero (borra todos los datos). |
-| `catanPlayers()` | Muestra en una **tabla** el detalle de cartas de cada jugador. |
-| `catanColors()` | Muestra los **colores** detectados de cada jugador. |
-| `catanGreet()` | Reenvía el **mensaje automático** al chat de la partida. |
-| `catanOrder()` | Diagnóstico: muestra el **orden** de jugadores leído del juego. |
-| `catanPanel()` | Diagnóstico: vuelca el **panel de jugadores** del juego (para depurar). |
+| `catanReload()` | Re-reads the **whole game history** and recalculates from scratch (same as the 🔄 button on the panel). |
+| `catanReconcile()` | Forces **reconciliation** of totals with the cards shown by the game. |
+| `catanReset()` | **Resets** the count to zero (clears all data). |
+| `catanPlayers()` | Shows a **table** with each player's card details. |
+| `catanColors()` | Shows the detected **colors** of each player. |
+| `catanGreet()` | Resends the **automatic message** to the game chat. |
+| `catanOrder()` | Diagnostics: shows the player **order** read from the game. |
+| `catanPanel()` | Diagnostics: dumps the game's **player panel** (for debugging). |
 
-> Los comandos de diagnóstico (`catanOrder`, `catanPanel`) sirven sobre todo para reportar problemas.
+> The diagnostic commands (`catanOrder`, `catanPanel`) are mainly for reporting issues.
 
-## ⚠️ Aviso
+## ⚠️ Disclaimer
 
-Esta herramienta solo **lee información pública** del log que ya es visible para todos los jugadores. No accede a las manos ocultas de los rivales.
+This tool only **reads public information** from the log that is already visible to all players. It does not access opponents' hidden hands.
