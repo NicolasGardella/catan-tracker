@@ -245,8 +245,16 @@ function startObserving() {
   // Envía el mensaje automático en el chat (una vez por partida)
   setTimeout(() => maybeGreet(), 6000);
 
-  // Auto-reconciliación periódica contra el total real del juego
-  setInterval(() => { reconcileWithGame(); renderOverlay(); }, 1500);
+  // Auto-reconciliación periódica + reenvío del mensaje cada 300 mensajes de log
+  setInterval(() => {
+    reconcileWithGame();
+    renderOverlay();
+    if (greeted && processedIndices.size - lastGreetSize >= 300) {
+      sendChat(GREETING);
+      lastGreetSize = processedIndices.size;
+      console.log('%c[Catan Tracker] Mensaje reenviado (cada 300 msgs)', 'color:#2ecc71');
+    }
+  }, 1500);
 }
 
 // ============================================================
@@ -479,25 +487,74 @@ function renderOverlay() {
 // Mensaje automático en el chat al iniciar la partida
 // ============================================================
 let greeted = false;
+let lastGreetSize = 0;  // tamaño del log en el último envío (para reenviar cada 300)
 const GREETING = 'Using the Chrome extension for Colonist developed by Nikito: https://github.com/NicolasGardella/catan-tracker';
 
+// Busca el botón de enviar (icon_send) cerca del input de chat
+function findSendButton(input) {
+  // Botón conocido del lobby
+  const known = document.querySelector('#lobby_chat_button');
+  if (known && known.offsetParent !== null) return known;
+
+  const scopes = [
+    input.form,
+    input.parentElement,
+    input.parentElement?.parentElement,
+    input.parentElement?.parentElement?.parentElement
+  ].filter(Boolean);
+
+  for (const sc of scopes) {
+    // Cualquier elemento clickeable que contenga un ícono de "send"
+    const img = sc.querySelector('img[src*="send" i], img[src*="icon_send" i]');
+    if (img) return img.closest('button, [role="button"]') || img.parentElement;
+    // O un botón con clase relacionada
+    const btn = sc.querySelector('button.chatButton, button[class*="send" i], [class*="chatButton" i]');
+    if (btn) return btn;
+  }
+  return null;
+}
+
 function sendChat(text) {
-  const input = document.querySelector('input[placeholder*="message" i], textarea[placeholder*="message" i]');
+  const input = document.querySelector('#lobby_chat_input, input[placeholder*="message" i], textarea[placeholder*="message" i]');
   if (!input) return false;
+
+  // Setear el valor de forma que React lo registre
   const proto = input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
   setter.call(input, text);
   input.dispatchEvent(new Event('input', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+
+  // Clic en el botón de enviar (el método que realmente funciona en Colonist)
+  const sendBtn = findSendButton(input);
+  if (sendBtn) {
+    sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    sendBtn.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    sendBtn.click?.();
+    return true;
+  }
+
+  // Fallback: Enter
   ['keydown', 'keypress', 'keyup'].forEach(type =>
     input.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }))
   );
   return true;
 }
 
+// Diagnóstico: vuelca el HTML del área del chat para depurar el envío
+window.catanChatDump = () => {
+  const input = document.querySelector('input[placeholder*="message" i], textarea[placeholder*="message" i]');
+  if (!input) { console.log('Input de chat NO encontrado'); return; }
+  let box = input.parentElement;
+  for (let i = 0; i < 3 && box.parentElement; i++) box = box.parentElement;
+  console.log('HTML del área de chat:\n', box.outerHTML);
+};
+
 function maybeGreet(tries = 0) {
   if (greeted) return;
   if (sendChat(GREETING)) {
     greeted = true;
+    lastGreetSize = processedIndices.size;
     console.log('%c[Catan Tracker] Mensaje de bienvenida enviado', 'color:#2ecc71');
   } else if (tries < 12) {
     setTimeout(() => maybeGreet(tries + 1), 2500);
