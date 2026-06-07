@@ -52,6 +52,17 @@ function loseHiddenCard(name) {
   ensurePlayer(norm(name)).stolen++;
 }
 
+// Busca el primer recurso entre las imágenes de un elemento (case-insensitive).
+// Útil para el Monopolio, cuyo ícono usa alt en minúscula (ore, brick, ...).
+function resourceFromImgs(el) {
+  for (const img of el.querySelectorAll('img')) {
+    const a = (img.alt || '').toLowerCase();
+    const found = RESOURCES.find(r => r.toLowerCase() === a);
+    if (found) return found;
+  }
+  return null;
+}
+
 // ============================================================
 // Parser: recorre los nodos del mensaje EN ORDEN
 // ============================================================
@@ -129,6 +140,18 @@ function processMessage(msgEl) {
     if (partner) {
       m.gave.forEach(r => gain(partner, r));
       m.got.forEach(r => spend(partner, r));
+    }
+  }
+
+  // --- MONOPOLIO: "X stole N <recurso>" (toma TODO ese recurso de todos) ---
+  else if (/\bstole\s+\d+/i.test(text)) {
+    const amount = parseInt(text.match(/stole\s+(\d+)/i)[1], 10);
+    const res = resourceFromImgs(msgEl);  // el ícono viene en minúscula (ore, brick...)
+    if (res) {
+      // Todos los demás pierden TODO ese recurso
+      Object.keys(players).forEach(n => { if (norm(n) !== norm(actor)) players[n][res] = 0; });
+      // El que jugó el monopolio gana el total robado
+      ensurePlayer(norm(actor))[res] += amount;
     }
   }
 
@@ -378,6 +401,12 @@ function reconcileWithGame() {
   });
 }
 window.catanReconcile = () => { reconcileWithGame(); renderOverlay(); };
+// Diagnóstico: muestra qué número de cartas estoy leyendo del panel para cada jugador
+window.catanCounts = () => {
+  const panel = document.querySelector('[class*="gamePlayerInformationContainer-"]');
+  if (panel) console.log('Líneas crudas del panel:\n', JSON.stringify(panel.innerText.split('\n').map(s=>s.trim()).filter(Boolean)));
+  console.log('Cartas que leo (readGameCardCounts):', readGameCardCounts());
+};
 
 // Diagnóstico del orden de jugadores
 window.catanOrder = () => {
@@ -581,6 +610,50 @@ window.catanPanel = () => {
 window.catanColors = () => console.log(playerColors);
 window.catanReset = () => { Object.keys(players).forEach(k => delete players[k]); processedIndices.clear(); renderOverlay(); };
 window.catanReload = () => reloadHistory();
+
+// Vuelca TODO el log de la partida (texto + recursos por mensaje) y lo copia al portapapeles
+window.catanDumpLog = async () => {
+  const scroller = findScroller();
+  const collected = new Map();  // index -> texto
+  const grab = () => {
+    document.querySelectorAll('[class*="feedMessage-"]').forEach(m => {
+      const idxEl = m.closest('[data-index]');
+      const idx = idxEl ? parseInt(idxEl.dataset.index, 10) : Math.random();
+      const span = m.querySelector('[class*="messagePart-"]');
+      let txt = m.innerText.trim().replace(/\s+/g, ' ');
+      // Añade los recursos/íconos por su alt para no perder info
+      const alts = [...m.querySelectorAll('img')].map(i => i.alt).filter(Boolean);
+      if (alts.length) txt += '  [imgs: ' + alts.join(', ') + ']';
+      if (txt) collected.set(idx, txt);
+    });
+  };
+  if (scroller) {
+    scroller.scrollTop = 0;
+    await sleep(200);
+    let last = -1, guard = 0;
+    const step = Math.max(40, scroller.clientHeight * 0.5);
+    while (guard++ < 1500) {
+      grab();
+      const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+      if (atBottom && scroller.scrollTop === last) break;
+      last = scroller.scrollTop;
+      scroller.scrollTop = Math.min(scroller.scrollTop + step, scroller.scrollHeight);
+      await sleep(80);
+    }
+  }
+  grab();
+  const ordered = [...collected.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
+  const text = ordered.join('\n');
+  console.log('%c[Catan Tracker] Log completo (' + ordered.length + ' mensajes):', 'color:#e67e22;font-weight:bold');
+  console.log(text);
+  try {
+    await navigator.clipboard.writeText(text);
+    console.log('%c[Catan Tracker] ✅ Copiado al portapapeles. Pegalo en el chat.', 'color:#2ecc71;font-weight:bold');
+  } catch (e) {
+    console.log('%c[Catan Tracker] No se pudo copiar automáticamente. Copiá el texto de arriba manualmente.', 'color:#e74c3c');
+  }
+  return ordered.length;
+};
 
 setTimeout(startObserving, 4000);
 
