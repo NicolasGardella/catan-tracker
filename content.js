@@ -488,7 +488,7 @@ function renderOverlay() {
 // ============================================================
 let greeted = false;
 let lastGreetSize = 0;  // tamaño del log en el último envío (para reenviar cada 300)
-const GREETING = 'Using the Chrome extension for Colonist developed by Nikito: https://github.com/NicolasGardella/catan-tracker';
+const GREETING = 'Using the Chrome extension for Colonist developed by Nikito. Download: https://github.com/NicolasGardella/catan-tracker/releases/latest';
 
 // Busca el botón de enviar (icon_send) cerca del input de chat
 function findSendButton(input) {
