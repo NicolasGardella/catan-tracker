@@ -479,7 +479,7 @@ function renderOverlay() {
 // Mensaje automático en el chat al iniciar la partida
 // ============================================================
 let greeted = false;
-const GREETING = 'Using the Chrome extension for Colonist developed by Nikito';
+const GREETING = 'Using the Chrome extension for Colonist developed by Nikito: https://github.com/NicolasGardella/catan-tracker';
 
 function sendChat(text) {
   const input = document.querySelector('input[placeholder*="message" i], textarea[placeholder*="message" i]');
