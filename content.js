@@ -519,6 +519,7 @@ window.catanPanel = () => {
 };
 window.catanColors = () => console.log(playerColors);
 window.catanReset = () => { Object.keys(players).forEach(k => delete players[k]); processedIndices.clear(); renderOverlay(); };
+window.catanReload = () => reloadHistory();
 
 setTimeout(startObserving, 4000);
 

@@ -17,13 +17,19 @@ Desarrollada por **Nikito**.
 - Botón 🔄 para releer todo el historial
 - Mensaje automático en el chat al iniciar la partida
 
-## 📥 Instalación
+## 📥 Instalación en Google Chrome
 
-1. Descargá este repositorio (botón verde **Code → Download ZIP**) y descomprimilo.
-2. Abrí tu navegador en `chrome://extensions` (o `brave://extensions`).
-3. Activá el **Modo desarrollador** (interruptor arriba a la derecha).
-4. Hacé clic en **Cargar descomprimida** y seleccioná la carpeta `catan-tracker`.
-5. Entrá a [colonist.io](https://colonist.io) y jugá: el panel aparece arriba a la izquierda.
+1. **Descargá** el código: en esta página de GitHub, hacé clic en el botón verde **`Code`** → **`Download ZIP`**.
+2. **Descomprimí** el ZIP en una carpeta de tu PC (vas a tener una carpeta `catan-tracker`).
+3. Abrí Chrome y andá a la barra de direcciones, escribí **`chrome://extensions`** y presioná Enter.
+4. Arriba a la derecha, activá el **Modo de desarrollador** (interruptor).
+5. Hacé clic en **`Cargar extensión sin empaquetar`** (o "Load unpacked").
+6. Seleccioná la carpeta **`catan-tracker`** que descomprimiste y aceptá.
+7. ¡Listo! Entrá a [colonist.io](https://colonist.io) y jugá: el panel del tracker aparece arriba a la izquierda.
+
+> **Brave/Edge:** es igual, pero la dirección es `brave://extensions` o `edge://extensions`.
+
+> **Nota:** mantené la carpeta descomprimida en tu PC. Si la borrás o la movés, la extensión deja de funcionar. Para actualizarla, reemplazá los archivos y tocá el botón de recargar 🔄 en `chrome://extensions`.
 
 ## 🧩 Columnas del panel
 
@@ -34,12 +40,22 @@ Desarrollada por **Nikito**.
 | 🥷 | Cartas que le robaron (tipo desconocido) |
 | Σ | Total de cartas (coincide con el juego) |
 
-## 🛠️ Comandos de consola (F12)
+## 🛠️ Comandos de consola
 
-- `catanReconcile()` — fuerza la reconciliación con el juego
-- `catanPlayers()` — muestra la tabla de jugadores
-- `catanGreet()` — reenvía el mensaje de chat
-- `catanReset()` — reinicia el conteo
+Abrí la consola del navegador con **`F12`** (pestaña **Console**) y escribí cualquiera de estos comandos mientras estás en una partida:
+
+| Comando | Qué hace |
+|---|---|
+| `catanReload()` | Relee **todo el historial** de la partida y recalcula desde cero (igual que el botón 🔄 del panel). |
+| `catanReconcile()` | Fuerza la **reconciliación** de los totales con las cartas que muestra el juego. |
+| `catanReset()` | **Reinicia** el conteo a cero (borra todos los datos). |
+| `catanPlayers()` | Muestra en una **tabla** el detalle de cartas de cada jugador. |
+| `catanColors()` | Muestra los **colores** detectados de cada jugador. |
+| `catanGreet()` | Reenvía el **mensaje automático** al chat de la partida. |
+| `catanOrder()` | Diagnóstico: muestra el **orden** de jugadores leído del juego. |
+| `catanPanel()` | Diagnóstico: vuelca el **panel de jugadores** del juego (para depurar). |
+
+> Los comandos de diagnóstico (`catanOrder`, `catanPanel`) sirven sobre todo para reportar problemas.
 
 ## ⚠️ Aviso
 
