@@ -172,6 +172,11 @@ function processMessage(msgEl) {
     m.all.forEach(r => gain(actor, r));
   }
 
+  // --- AÑO DE LA ABUNDANCIA: "X took from bank <recurso> <recurso>" ---
+  else if (/took from bank/i.test(text) && actor && m.all.length) {
+    m.all.forEach(r => gain(actor, r));
+  }
+
   // --- DESCARTAR (por 7) ---
   else if (/\bdiscarded\b/i.test(text) && actor && m.all.length) {
     m.all.forEach(r => spend(actor, r));
