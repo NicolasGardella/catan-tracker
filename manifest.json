@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Catan Tracker",
+  "version": "0.1",
+  "description": "Trackea las cartas de cada jugador en Colonist.io",
+  "permissions": [],
+  "content_scripts": [
+    {
+      "matches": ["*://colonist.io/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Catan Tracker"
+  }
+}
