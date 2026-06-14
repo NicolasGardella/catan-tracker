@@ -17,6 +17,21 @@ const playerColors = {};
 // Índices de mensajes ya procesados (evita doble conteo por scroll virtual)
 const processedIndices = new Set();
 
+// Estadísticas extra
+const diceCounts = {};        // { 2: n, 3: n, ... 12: n }
+let totalRolls = 0;
+let longestRoad = null;       // nombre del jugador con el camino más largo
+let largestArmy = null;       // nombre del jugador con el ejército más grande
+const DEV_DECK_TOTAL = 25;    // cartas de desarrollo en el mazo (base)
+
+function resetStats() {
+  for (let i = 2; i <= 12; i++) diceCounts[i] = 0;
+  totalRolls = 0;
+  longestRoad = null;
+  largestArmy = null;
+}
+resetStats();
+
 function ensurePlayer(name) {
   if (!players[name]) {
     players[name] = {
@@ -94,24 +109,32 @@ function parseMessage(span) {
   return result;
 }
 
-// Detecta el nombre del jugador local (avatar icon_player_loggedin)
+// Aplica el nombre detectado como jugador local
+function applySelf(name) {
+  if (!name || SELF) return;
+  SELF = name;
+  // Fusiona la fila "You" huérfana (creada antes de detectar el nombre) en SELF
+  if (players['You'] && SELF !== 'You') {
+    const dest = ensurePlayer(SELF);
+    Object.keys(players['You']).forEach(k => { dest[k] += players['You'][k]; });
+    delete players['You'];
+  }
+  console.log('%c[Catan Tracker] Jugador local detectado: ' + SELF, 'color: #2ecc71; font-weight: bold');
+}
+
+// Detecta el nombre del jugador local.
+// PRINCIPAL: el header de la cuenta logueada (inequívoco, funciona aunque los
+// rivales sean humanos). FALLBACK: avatar icon_player_loggedin (solo fiable con bots).
 function detectSelf(msgEl) {
   if (SELF) return;
-  const avatar = msgEl.querySelector('img.avatarImage-JNCoQelY, [class*="avatarImage-"]');
+  const headerEl = document.querySelector('[name="web-header-username"], .web-header-username');
+  const headerName = headerEl?.innerText?.trim();
+  if (headerName) { applySelf(headerName); return; }
+
+  const avatar = msgEl?.querySelector('img.avatarImage-JNCoQelY, [class*="avatarImage-"]');
   if (avatar && /icon_player_loggedin/.test(avatar.src)) {
     const nameSpan = msgEl.querySelector('span[style*="font-weight"]');
-    if (nameSpan) {
-      SELF = nameSpan.innerText.trim();
-      const match = (nameSpan.getAttribute('style') || '').match(/color:\s*(#[0-9a-fA-F]{3,6})/);
-      if (match) playerColors[SELF] = match[1];
-      // Fusiona la fila "You" huérfana (creada antes de detectar el nombre) en SELF
-      if (players['You'] && SELF !== 'You') {
-        const dest = ensurePlayer(SELF);
-        Object.keys(players['You']).forEach(k => { dest[k] += players['You'][k]; });
-        delete players['You'];
-      }
-      console.log('%c[Catan Tracker] Jugador local detectado: ' + SELF, 'color: #2ecc71; font-weight: bold');
-    }
+    if (nameSpan) applySelf(nameSpan.innerText.trim());
   }
 }
 
@@ -130,6 +153,26 @@ function processMessage(msgEl) {
 
   // actor = quien ejecuta la acción
   const actor = /^you\b/i.test(text) ? 'You' : m.names[0];
+
+  // --- TIRADA DE DADOS: "X rolled [dice_a] [dice_b]" ---
+  if (/\brolled\b/i.test(text)) {
+    const dice = [...msgEl.querySelectorAll('img')]
+      .map(i => (i.alt || '').match(/^dice_(\d)/i))
+      .filter(Boolean).map(mm => parseInt(mm[1], 10));
+    if (dice.length === 2) {
+      const sum = dice[0] + dice[1];
+      diceCounts[sum] = (diceCounts[sum] || 0) + 1;
+      totalRolls++;
+      renderOverlay();
+    }
+    return;
+  }
+
+  // --- CAMINO MÁS LARGO / EJÉRCITO MÁS GRANDE (para puntos e íconos) ---
+  if (/received Longest Road/i.test(text)) { longestRoad = norm(actor); }
+  else if (/Longest Road passed from .* to/i.test(text)) { longestRoad = m.names[m.names.length - 1]; }
+  if (/received Largest Army/i.test(text)) { largestArmy = norm(actor); }
+  else if (/Largest Army passed from .* to/i.test(text)) { largestArmy = m.names[m.names.length - 1]; }
 
   // --- COMERCIO: "X gave ... and got ... from Y" / "X gave bank ... and took ..." ---
   if (/\bgave\b/.test(text) && /\b(got|took)\b/i.test(text)) {
@@ -252,6 +295,8 @@ function startObserving() {
 
   console.log('%c[Catan Tracker] Log encontrado. Observando...', 'color: #2ecc71; font-weight: bold');
 
+  detectSelf();  // detecta tu jugador desde el header (antes de procesar mensajes)
+
   container.querySelectorAll('[class*="feedMessage-"]').forEach(handleFeedMessage);
 
   new MutationObserver(muts => {
@@ -304,7 +349,7 @@ function createOverlay() {
   if (document.getElementById('catan-tracker-overlay')) return;
   const div = document.createElement('div');
   div.id = 'catan-tracker-overlay';
-  div.innerHTML = `<div id="ct-header">📊 Catan Tracker <span><span id="ct-reload" title="Releer todo el historial">🔄</span> <span id="ct-close">✕</span></span></div><table id="ct-table"></table>`;
+  div.innerHTML = `<div id="ct-header">📊 Catan Tracker <span><span id="ct-reload" title="Releer todo el historial">🔄</span> <span id="ct-close">✕</span></span></div><table id="ct-table"></table><div id="ct-footer"></div>`;
   document.body.appendChild(div);
 
   const style = document.createElement('style');
@@ -324,6 +369,14 @@ function createOverlay() {
     #ct-table tr:nth-child(even) { background: rgba(255,255,255,0.05); }
     #ct-table td.unk { color: #f1c40f; }
     #ct-table td.stl { color: #e67e22; }
+    #ct-footer { margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 6px; font-size: 12px; }
+    #ct-footer .ct-dev { color: #9b59b6; margin-bottom: 5px; }
+    #ct-dice { display: flex; align-items: flex-end; gap: 2px; height: 46px; }
+    #ct-dice .ct-bar-wrap { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+    #ct-dice .ct-bar { width: 100%; background: #e67e22; border-radius: 2px 2px 0 0; min-height: 1px; }
+    #ct-dice .ct-bar.hot { background: #e74c3c; }
+    #ct-dice .ct-num { font-size: 9px; color: #aaa; margin-top: 1px; }
+    #ct-dice .ct-cnt { font-size: 9px; color: #eee; }
   `;
   document.head.appendChild(style);
 
@@ -450,6 +503,7 @@ async function reloadHistory(btn) {
   // Reinicia el estado (mantiene SELF y colores ya detectados)
   Object.keys(players).forEach(k => delete players[k]);
   processedIndices.clear();
+  resetStats();
 
   const scroller = findScroller();
   if (scroller) {
@@ -478,17 +532,27 @@ async function reloadHistory(btn) {
   console.log('%c[Catan Tracker] Historial releído. Mensajes procesados: ' + processedIndices.size, 'color: #2ecc71; font-weight: bold');
 }
 
+// Puntos de victoria VISIBLES (no incluye cartas de PV ocultas)
+function visibleVP(name, p) {
+  let vp = p.settlements + p.cities * 2;
+  if (longestRoad === name) vp += 2;
+  if (largestArmy === name) vp += 2;
+  return vp;
+}
+
 // Construye el texto del tooltip del jugador (construcciones y dev cards)
-function buildPlayerTooltip(p) {
+function buildPlayerTooltip(name, p) {
   const usedCount = p.knights + p.monopoly + p.yearPlenty + p.roadBuilding;
   const held = Math.max(0, p.devBought - usedCount);  // compradas y aún sin usar (tipo desconocido)
   const parts = [
-    `Caminos: ${p.roads}/15`,
+    `Puntos visibles: ${visibleVP(name, p)}`,
+    `Caminos: ${p.roads}/15${longestRoad === name ? ' 🛣️ (más largo)' : ''}`,
     `Casas: ${p.settlements}/5`,
     `Ciudades: ${p.cities}/4`,
     `Cartas de desarrollo compradas: ${p.devBought}`,
     `En mano sin usar (tipo desconocido): ${held}`
   ];
+  if (largestArmy === name) parts.push('⚔️ Ejército más grande');
   const used = [];
   if (p.knights) used.push(`Caballero x${p.knights}`);
   if (p.monopoly) used.push(`Monopolio x${p.monopoly}`);
@@ -510,11 +574,40 @@ function renderOverlay() {
     const color = playerColors[name] || '#eee';
     // Sombra/borde negro para que los colores oscuros también se lean sobre el fondo oscuro
     const shadow = '-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000';
-    const tip = buildPlayerTooltip(p);
-    html += `<tr><td title="${tip}" style="color:${color};font-weight:700;text-shadow:${shadow};cursor:help">${name}</td>${COLS.map(c =>
+    const tip = buildPlayerTooltip(name, p);
+    const marks = (longestRoad === name ? ' 🛣️' : '') + (largestArmy === name ? ' ⚔️' : '');
+    html += `<tr><td title="${tip}" style="color:${color};font-weight:700;text-shadow:${shadow};cursor:help">${name}${marks}</td>${COLS.map(c =>
       `<td class="${c === 'unknown' ? 'unk' : (c === 'stolen' ? 'stl' : '')}">${p[c] || 0}</td>`).join('')}<td><b>${total}</b></td></tr>`;
   });
   table.innerHTML = html;
+  renderFooter();
+}
+
+// Footer: cartas de desarrollo restantes + histograma de dados
+function renderFooter() {
+  const footer = document.getElementById('ct-footer');
+  if (!footer) return;
+
+  const bought = Object.values(players).reduce((a, p) => a + (p.devBought || 0), 0);
+  const devLeft = Math.max(0, DEV_DECK_TOTAL - bought);
+
+  // Histograma de dados (2..12)
+  const max = Math.max(1, ...Object.values(diceCounts));
+  let bars = '';
+  for (let n = 2; n <= 12; n++) {
+    const c = diceCounts[n] || 0;
+    const h = Math.round((c / max) * 34);
+    const hot = (n === 6 || n === 8) ? ' hot' : '';
+    bars += `<div class="ct-bar-wrap" title="${n}: ${c} veces">
+      <span class="ct-cnt">${c || ''}</span>
+      <div class="ct-bar${hot}" style="height:${h}px"></div>
+      <span class="ct-num">${n}</span></div>`;
+  }
+
+  footer.innerHTML =
+    `<div class="ct-dev">🃏 Dev cards en el mazo: <b>${devLeft}</b> / ${DEV_DECK_TOTAL}</div>` +
+    `<div title="Tiradas totales: ${totalRolls}">🎲 Dados (${totalRolls})</div>` +
+    `<div id="ct-dice">${bars}</div>`;
 }
 
 // ============================================================
@@ -614,6 +707,79 @@ window.catanPanel = () => {
 };
 window.catanColors = () => console.log(playerColors);
 window.catanReset = () => { Object.keys(players).forEach(k => delete players[k]); processedIndices.clear(); renderOverlay(); };
+
+// ============================================================
+// catanDebug(): junta TODO lo necesario para revisar un descuadre
+// (log completo + estado + panel del juego + stats) y lo copia al portapapeles
+// ============================================================
+window.catanDebug = async () => {
+  console.log('%c[Catan Tracker] Generando debug... (no toques nada ~3s)', 'color:#e67e22;font-weight:bold');
+
+  // 1) Recolecta TODO el log (recorriendo el scroll virtual)
+  const scroller = findScroller();
+  const collected = new Map();
+  const grab = () => {
+    document.querySelectorAll('[class*="feedMessage-"]').forEach(m => {
+      const idxEl = m.closest('[data-index]');
+      const idx = idxEl ? parseInt(idxEl.dataset.index, 10) : Math.random();
+      let txt = m.innerText.trim().replace(/\s+/g, ' ');
+      const alts = [...m.querySelectorAll('img')].map(i => i.alt).filter(Boolean);
+      if (alts.length) txt += '  [imgs: ' + alts.join(', ') + ']';
+      if (txt) collected.set(idx, txt);
+    });
+  };
+  if (scroller) {
+    scroller.scrollTop = 0;
+    await sleep(200);
+    let last = -1, guard = 0;
+    const step = Math.max(40, scroller.clientHeight * 0.5);
+    while (guard++ < 1500) {
+      grab();
+      const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+      if (atBottom && scroller.scrollTop === last) break;
+      last = scroller.scrollTop;
+      scroller.scrollTop = Math.min(scroller.scrollTop + step, scroller.scrollHeight);
+      await sleep(80);
+    }
+  }
+  grab();
+  const logArr = [...collected.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1]);
+
+  // 2) Panel del juego
+  const panel = document.querySelector('[class*="gamePlayerInformationContainer-"]');
+  const panelRaw = panel ? panel.innerText.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+  // 3) Reporte completo
+  const bought = Object.values(players).reduce((a, p) => a + (p.devBought || 0), 0);
+  const report = [
+    '===== CATAN TRACKER DEBUG =====',
+    'SELF: ' + SELF,
+    'Colores: ' + JSON.stringify(playerColors),
+    'Camino largo: ' + longestRoad + ' | Ejercito: ' + largestArmy,
+    'Dev comprados (total): ' + bought + ' | en mazo: ' + (DEV_DECK_TOTAL - bought),
+    'Dados (' + totalRolls + '): ' + JSON.stringify(diceCounts),
+    '',
+    '----- ESTADO DEL TRACKER -----',
+    JSON.stringify(players, null, 2),
+    '',
+    '----- PANEL DEL JUEGO (crudo) -----',
+    JSON.stringify(panelRaw),
+    '----- PANEL LEIDO (cartas) -----',
+    JSON.stringify(readGameCardCounts()),
+    '',
+    '----- LOG COMPLETO (' + logArr.length + ' mensajes) -----',
+    logArr.join('\n')
+  ].join('\n');
+
+  console.log(report);
+  try {
+    await navigator.clipboard.writeText(report);
+    console.log('%c[Catan Tracker] ✅ Debug copiado al portapapeles. Pegáselo al dev.', 'color:#2ecc71;font-weight:bold');
+  } catch (e) {
+    console.log('%c[Catan Tracker] No se pudo copiar solo. Copiá el texto de arriba a mano.', 'color:#e74c3c');
+  }
+  return 'OK (' + logArr.length + ' mensajes)';
+};
 window.catanReload = () => reloadHistory();
 
 // Vuelca TODO el log de la partida (texto + recursos por mensaje) y lo copia al portapapeles
@@ -668,6 +834,7 @@ new MutationObserver(() => {
     lastUrl = location.href;
     Object.keys(players).forEach(k => delete players[k]);
     processedIndices.clear();
+    resetStats();
     SELF = null;
     greeted = false;
     setTimeout(startObserving, 4000);
