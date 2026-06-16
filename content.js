@@ -38,7 +38,11 @@ function ensurePlayer(name) {
       Lumber: 0, Brick: 0, Wool: 0, Grain: 0, Ore: 0, unknown: 0, stolen: 0,
       // Construcciones y cartas de desarrollo (para el tooltip)
       roads: 0, settlements: 0, cities: 0, devBought: 0,
-      knights: 0, monopoly: 0, yearPlenty: 0, roadBuilding: 0
+      knights: 0, monopoly: 0, yearPlenty: 0, roadBuilding: 0,
+      // Contadores de robos (VECES, no cartas)
+      robbedCount: 0,    // veces que le robaron
+      stoleCount: 0,     // veces que robó
+      stoleFromMe: 0     // veces que me robó a mí (jugador local)
     };
   }
   return players[name];
@@ -122,6 +126,39 @@ function applySelf(name) {
   console.log('%c[Catan Tracker] Jugador local detectado: ' + SELF, 'color: #2ecc71; font-weight: bold');
 }
 
+// Extrae los recursos del lado "doy" de una oferta de trade.
+// Formato: "X wants to give <DOY> for <PIDO>"  /  "...offering <DOY> for <PIDO>"
+// Lo que ofrece DAR son cartas que tiene seguro.
+function parseOfferGive(span) {
+  const give = [];
+  let section = 'give';  // arranca en el lado "doy"
+  span.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      if (/\bfor\b/i.test(node.textContent)) section = 'for';
+    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'IMG') {
+      if (section === 'give' && RESOURCES.includes(node.alt)) give.push(node.alt);
+    }
+  });
+  return give;
+}
+
+// Valida las cartas conocidas de un jugador usando una oferta de trade:
+// si ofrece dar un recurso que no le tenemos contado, convierte sus ❓ en ese recurso.
+function validateFromOffer(name, giveRes) {
+  if (!giveRes.length) return;
+  const p = ensurePlayer(norm(name));
+  const counts = {};
+  giveRes.forEach(r => counts[r] = (counts[r] || 0) + 1);
+  Object.keys(counts).forEach(r => {
+    const need = counts[r] - p[r];          // cuántos R más debería tener
+    if (need > 0 && p.unknown > 0) {
+      const move = Math.min(need, p.unknown);
+      p[r] += move;
+      p.unknown -= move;                     // ❓ -> recurso conocido (total no cambia)
+    }
+  });
+}
+
 // Detecta el nombre del jugador local.
 // PRINCIPAL: el header de la cuenta logueada (inequívoco, funciona aunque los
 // rivales sean humanos). FALLBACK: avatar icon_player_loggedin (solo fiable con bots).
@@ -202,12 +239,24 @@ function processMessage(msgEl) {
   else if (/\bstole\b/i.test(text)) {
     const thief = actor;
     const victim = /from you\b/i.test(text) ? 'You' : m.names[m.names.length - 1];
+    const tN = norm(thief), vN = norm(victim);
+
+    // Contadores de veces (independiente de si la carta es visible u oculta)
+    ensurePlayer(tN).stoleCount++;
+    ensurePlayer(vN).robbedCount++;
+    if (vN === SELF) ensurePlayer(tN).stoleFromMe++;
+
     if (m.all.length > 0) {
       m.all.forEach(r => { gain(thief, r); spend(victim, r); });
     } else {
-      ensurePlayer(norm(thief)).unknown++;
+      ensurePlayer(tN).unknown++;
       loseHiddenCard(victim);
     }
+  }
+
+  // --- OFERTA DE TRADE: revela cartas que el jugador TIENE (lado "doy") ---
+  else if (/wants to give|proposed counter offer/i.test(text) && actor) {
+    validateFromOffer(actor, parseOfferGive(span));
   }
 
   // --- GANAR recursos ---
@@ -318,15 +367,10 @@ function startObserving() {
   // Envía el mensaje automático en el chat (una vez por partida)
   setTimeout(() => maybeGreet(), 6000);
 
-  // Auto-reconciliación periódica + reenvío del mensaje cada 300 mensajes de log
+  // Auto-reconciliación periódica contra el total real del juego
   setInterval(() => {
     reconcileWithGame();
     renderOverlay();
-    if (greeted && processedIndices.size - lastGreetSize >= 300) {
-      sendChat(GREETING);
-      lastGreetSize = processedIndices.size;
-      console.log('%c[Catan Tracker] Mensaje reenviado (cada 300 msgs)', 'color:#2ecc71');
-    }
   }, 1500);
 }
 
@@ -559,6 +603,17 @@ function buildPlayerTooltip(name, p) {
   if (p.yearPlenty) used.push(`Año de la abundancia x${p.yearPlenty}`);
   if (p.roadBuilding) used.push(`Construcción de caminos x${p.roadBuilding}`);
   parts.push('Desarrollo usadas: ' + (used.length ? used.join(', ') : 'ninguna'));
+
+  // --- Robos (veces) ---
+  parts.push('—');
+  if (name === SELF) {
+    parts.push(`🥷 Te robaron: ${p.robbedCount} veces`);
+    parts.push(`🗡️ Robaste: ${p.stoleCount} veces`);
+  } else {
+    parts.push(`🥷 Le robaron: ${p.robbedCount} veces`);
+    parts.push(`🗡️ Robó: ${p.stoleCount} veces (${p.stoleFromMe} a vos)`);
+  }
+
   return parts.join('\n');
 }
 
@@ -614,7 +669,6 @@ function renderFooter() {
 // Mensaje automático en el chat al iniciar la partida
 // ============================================================
 let greeted = false;
-let lastGreetSize = 0;  // tamaño del log en el último envío (para reenviar cada 300)
 const GREETING = 'Using the Chrome extension for Colonist developed by Nikito. Download: https://github.com/NicolasGardella/catan-tracker/releases/latest';
 
 // Busca el botón de enviar (icon_send) cerca del input de chat
@@ -685,7 +739,6 @@ function maybeGreet(tries = 0) {
   if (greeted) return;
   if (sendChat(GREETING)) {
     greeted = true;
-    lastGreetSize = processedIndices.size;
     console.log('%c[Catan Tracker] Mensaje de bienvenida enviado', 'color:#2ecc71');
   } else if (tries < 12) {
     setTimeout(() => maybeGreet(tries + 1), 2500);
