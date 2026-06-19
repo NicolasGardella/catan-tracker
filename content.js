@@ -3,6 +3,11 @@
 // Cuenta las cartas de cada jugador leyendo el log de eventos
 // ============================================================
 
+// ===== CONFIG =====
+// Enviar el mensaje automático al chat al iniciar la partida.
+// Poné false para testear sin spamear; true para la versión que se publica.
+const ENVIAR_MENSAJE_CHAT = true;
+
 const RESOURCES = ['Lumber', 'Brick', 'Wool', 'Grain', 'Ore'];
 
 // Estado: { nombre: { Lumber, Brick, Wool, Grain, Ore, unknown } }
@@ -736,6 +741,7 @@ window.catanChatDump = () => {
 };
 
 function maybeGreet(tries = 0) {
+  if (!ENVIAR_MENSAJE_CHAT) return;  // desactivable desde la config de arriba
   if (greeted) return;
   if (sendChat(GREETING)) {
     greeted = true;
